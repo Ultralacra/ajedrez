@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "project": {
+    "name": "ajedrez",
+    "productType": null,
+    "stack": [
+      "nextjs",
+      "react",
+      "tailwind-v4"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "app/globals.css"
+    ],
+    "components": [],
+    "assets": [],
+    "instructions": [
+      "AGENTS.md"
+    ]
+  },
+  "design": {
+    "colorMode": "light-and-dark",
+    "colors": {},
+    "typography": {},
+    "spacing": {},
+    "radius": {},
+    "shadows": {
+      "--shadow": {
+        "value": "0 24px 60px rgba(0, 0, 0, 0.35)",
+        "source": "app/globals.css"
+      }
+    },
+    "motion": {},
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [],
+    "preferredPrimitives": [],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [
+    {
+      "choice": "Turn-to-move feedback stays inside the brass, ivory and moss palette: a lit frame, a lifted piece, legal-move dots and a short glide. Pieces are original carvings, not a third-party set.",
+      "source": "user asked to make the move experience and the pieces feel complete"
+    }
+  ],
+  "evidence": [
+    {
+      "fact": "design.colorMode:light-and-dark",
+      "source": "app/globals.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "app/globals.css"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "AGENTS.md"
+    },
+    {
+      "fact": "project.stack:nextjs",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-11-11T23:45:28.536Z"
+}
