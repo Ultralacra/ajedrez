@@ -9,6 +9,11 @@ const ICE: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun.cloudflare.com:3478" },
+    {
+      urls: ["turn:eu-0.turn.peerjs.com:3478", "turn:us-0.turn.peerjs.com:3478"],
+      username: "peerjs",
+      credential: "peerjsp",
+    },
   ],
 };
 
@@ -91,10 +96,17 @@ export function usePeerRoom({
       return false;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: false,
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: false,
+        });
+      } catch (err) {
+        const name = err instanceof DOMException ? err.name : "";
+        if (name !== "OverconstrainedError" && name !== "ConstraintNotSatisfiedError") throw err;
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      }
       if (!mounted.current) {
         stream.getTracks().forEach((track) => track.stop());
         return false;
@@ -117,7 +129,9 @@ export function usePeerRoom({
       setMicError(
         name === "NotAllowedError" || name === "PermissionDeniedError"
           ? "Permiso de micrófono bloqueado. Actívalo en el navegador."
-          : "No se pudo abrir el micrófono.",
+          : name === "NotFoundError"
+            ? "Este aparato no tiene un micrófono que se pueda usar."
+            : "No se pudo abrir el micrófono.",
       );
       return false;
     }
