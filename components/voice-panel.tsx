@@ -7,9 +7,8 @@ function Meter({ stream, active }: { stream: MediaStream | null; active: boolean
   const [level, setLevel] = useState(0);
   useEffect(() => {
     if (!stream || !active) return;
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    const audio = new Ctx();
+    const audio = sharedAudio();
+    if (!audio) return;
     const source = audio.createMediaStreamSource(stream);
     const analyser = audio.createAnalyser();
     analyser.fftSize = 256;
@@ -31,7 +30,6 @@ function Meter({ stream, active }: { stream: MediaStream | null; active: boolean
     return () => {
       cancelAnimationFrame(frame);
       source.disconnect();
-      void audio.close();
     };
   }, [active, stream]);
 
@@ -70,7 +68,6 @@ export function VoicePanel({
   onReconnect: () => void;
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const [deafened, setDeafened] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [needsTap, setNeedsTap] = useState(false);
@@ -81,39 +78,26 @@ export function VoicePanel({
 
   const unlock = () => {
     const ctx = sharedAudio();
-    if (!ctx) {
-      setNeedsTap(true);
-      return;
-    }
     setUnlocked(true);
-    void ctx.resume().then(() => setNeedsTap(ctx.state !== "running"));
+    if (ctx) void ctx.resume();
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.muted = false;
+    void audio.play().then(() => setNeedsTap(false)).catch(() => setNeedsTap(true));
   };
 
   useEffect(() => {
-    sourceRef.current?.disconnect();
-    sourceRef.current = null;
     const audio = audioRef.current;
+    if (!audio) return;
     if (!remoteStream || deafened) {
-      if (audio) audio.srcObject = null;
+      audio.srcObject = null;
       return;
     }
-    const ctx = sharedAudio();
-    if (ctx && unlocked) {
-      if (audio) audio.srcObject = null;
-      const source = ctx.createMediaStreamSource(remoteStream);
-      source.connect(ctx.destination);
-      sourceRef.current = source;
-      void ctx.resume().then(() => setNeedsTap(ctx.state !== "running"));
-      return () => {
-        source.disconnect();
-      };
-    }
-    if (!audio) return;
     audio.srcObject = remoteStream;
     audio.muted = false;
     audio.volume = 1;
     void audio.play().then(() => setNeedsTap(false)).catch(() => setNeedsTap(true));
-  }, [deafened, remoteStream, unlocked]);
+  }, [deafened, remoteStream]);
 
   useEffect(() => {
     if (!ask) return;
@@ -155,7 +139,7 @@ export function VoicePanel({
           {voiceOn ? (deafened ? "En silencio" : "Conectada") : localStream ? "Esperando" : "Apagada"}
         </span>
       </header>
-      <audio ref={audioRef} autoPlay playsInline />
+      <audio ref={audioRef} className="voice-out" autoPlay playsInline controls />
       {micError && !ask && <p className="warn">{micError}</p>}
       {!localStream ? (
         <button type="button" className="btn primary" onClick={() => void openAsk()} disabled={link === "connecting"}>

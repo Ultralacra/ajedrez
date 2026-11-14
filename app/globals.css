@@ -110,6 +110,14 @@ h2 { margin: 0; font-size: 1.15rem; }
   min-width: 0;
 }
 .top-actions .btn { min-width: 0; flex: 0 1 auto; }
+.voice-out {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
 .voice-row {
   display: flex;
   flex-direction: column;

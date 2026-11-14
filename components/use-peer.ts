@@ -7,13 +7,9 @@ export type LinkStatus = "connecting" | "waiting" | "live" | "error";
 
 const ICE: RTCConfiguration = {
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
+    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
     { urls: "stun:stun.cloudflare.com:3478" },
-    {
-      urls: ["turn:eu-0.turn.peerjs.com:3478", "turn:us-0.turn.peerjs.com:3478"],
-      username: "peerjs",
-      credential: "peerjsp",
-    },
+    { urls: "stun:global.stun.twilio.com:3478" },
   ],
 };
 
@@ -50,6 +46,8 @@ export function usePeerRoom({
   const pendingCallRef = useRef<MediaConnection | null>(null);
   const peerRef = useRef<Peer | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const callAtRef = useRef(0);
+  const heardRef = useRef(false);
   const mounted = useRef(true);
   onDataRef.current = onData;
   onLinkRef.current = onLink;
@@ -59,8 +57,11 @@ export function usePeerRoom({
     const previous = callRef.current;
     if (previous && previous !== call) previous.close();
     callRef.current = call;
+    callAtRef.current = Date.now();
+    heardRef.current = false;
     const hear = (stream: MediaStream) => {
       if (callRef.current !== call || stream.getAudioTracks().length === 0) return;
+      heardRef.current = true;
       setRemoteStream(stream);
     };
     call.on("stream", hear);
@@ -71,10 +72,14 @@ export function usePeerRoom({
       event.track.onunmute = () => hear(stream);
     });
     call.on("close", () => {
-      if (callRef.current === call) setRemoteStream(null);
+      if (callRef.current !== call) return;
+      heardRef.current = false;
+      setRemoteStream(null);
     });
     call.on("error", () => {
-      if (callRef.current === call) setRemoteStream(null);
+      if (callRef.current !== call) return;
+      heardRef.current = false;
+      setRemoteStream(null);
     });
   }, []);
 
@@ -82,8 +87,16 @@ export function usePeerRoom({
     const peer = peerRef.current;
     const stream = localStreamRef.current;
     if (!peer || peer.destroyed || !peer.open || !stream || isHostRef.current) return;
-    const call = peer.call(peerIdFor(code), stream);
-    attachCall(call);
+    const current = callRef.current;
+    const ice = current?.peerConnection?.iceConnectionState;
+    const age = Date.now() - callAtRef.current;
+    if (current && heardRef.current && (ice === "connected" || ice === "completed" || ice === "disconnected")) return;
+    if (current && age < 10000 && ice !== "failed" && ice !== "closed") return;
+    try {
+      attachCall(peer.call(peerIdFor(code), stream));
+    } catch {
+      /* el siguiente intento vuelve a llamar */
+    }
   }, [attachCall, code]);
 
   const enableMic = useCallback(async () => {
@@ -104,7 +117,7 @@ export function usePeerRoom({
         });
       } catch (err) {
         const name = err instanceof DOMException ? err.name : "";
-        if (name !== "OverconstrainedError" && name !== "ConstraintNotSatisfiedError") throw err;
+        if (name === "NotAllowedError" || name === "PermissionDeniedError" || name === "NotFoundError") throw err;
         stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       }
       if (!mounted.current) {
@@ -301,6 +314,14 @@ export function usePeerRoom({
       track.enabled = !muted;
     });
   }, [localStream, muted]);
+
+  useEffect(() => {
+    if (!localStream) return;
+    const timer = window.setInterval(() => {
+      if (!isHostRef.current) placeCall();
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [localStream, placeCall]);
 
   return {
     status: enabled ? status : "connecting",
