@@ -53,6 +53,7 @@ export function VoicePanel({
   localStream,
   remoteStream,
   micError,
+  blocked = false,
   muted,
   onToggleMute,
   onEnable,
@@ -62,6 +63,7 @@ export function VoicePanel({
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   micError: string | null;
+  blocked?: boolean;
   muted: boolean;
   onToggleMute: () => void;
   onEnable: () => void | Promise<boolean | void>;
@@ -141,6 +143,9 @@ export function VoicePanel({
       </header>
       <audio ref={audioRef} className="voice-out" autoPlay playsInline controls />
       {micError && !ask && <p className="warn">{micError}</p>}
+      {blocked && !voiceOn && localStream && (
+        <p className="warn">La voz no logra pasar entre sus dos conexiones. Mientras tanto pueden escribirse por el chat.</p>
+      )}
       {!localStream ? (
         <button type="button" className="btn primary" onClick={() => void openAsk()} disabled={link === "connecting"}>
           Activar micrófono

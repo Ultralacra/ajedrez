@@ -14,6 +14,10 @@ export function seatKey(code: string) {
   return `enroque-seat:${code}`;
 }
 
+export function colorKey(code: string) {
+  return `enroque-color:${code}`;
+}
+
 export function setupKey(code: string) {
   return `enroque-setup:${code}`;
 }

@@ -25,7 +25,7 @@ import {
   type GameState,
   type Promo,
 } from "@/lib/game";
-import { NAME_KEY, SOUND_KEY, formatCode, readGame, readSetup, roleKey, seatKey, setupKey, writeGame, writeSetup } from "@/lib/local";
+import { NAME_KEY, SOUND_KEY, colorKey, formatCode, readGame, readSetup, roleKey, seatKey, setupKey, writeGame, writeSetup } from "@/lib/local";
 
 export function Room({ code }: { code: string }) {
   if (code.length !== 6) return <InvalidCode />;
@@ -55,6 +55,7 @@ function LiveRoom({ code }: { code: string }) {
   const [hostColor, setHostColor] = useState<Color>("w");
   const [myColor, setMyColor] = useState<Color>("w");
   const [colorKnown, setColorKnown] = useState(false);
+  const [seatGuess, setSeatGuess] = useState<Color>("b");
   const [myName, setMyName] = useState("Rival");
   const [nonce, setNonce] = useState(0);
   const [soundOn, setSoundOn] = useState(true);
@@ -241,7 +242,9 @@ function LiveRoom({ code }: { code: string }) {
     if (guest === "w" || guest === "b") {
       myColorRef.current = guest;
       setMyColor(guest);
+      setSeatGuess(guest);
       setColorKnown(true);
+      sessionStorage.setItem(colorKey(code), guest);
     }
   }
 
@@ -301,6 +304,7 @@ function LiveRoom({ code }: { code: string }) {
     if (!name) return;
     localStorage.setItem(NAME_KEY, name);
     sessionStorage.setItem(seatKey(code), "1");
+    if (sessionStorage.getItem(colorKey(code)) === "w") setSeatGuess("w");
     nameRef.current = name;
     setMyName(name);
     const placeholder = createGame({ minutes: null, whiteName: "Blancas", blackName: "Negras" });
@@ -438,8 +442,8 @@ function LiveRoom({ code }: { code: string }) {
       mode="online"
       code={code}
       state={state}
-      myColor={colorKnown ? myColor : "w"}
-      orientation={colorKnown ? myColor : "w"}
+      myColor={colorKnown ? myColor : "both"}
+      orientation={colorKnown ? myColor : seatGuess}
       link={link}
       linkError={link === "error" ? bus.error || peer.error : null}
       canInvite={role === "host"}
@@ -452,6 +456,7 @@ function LiveRoom({ code }: { code: string }) {
         localStream: peer.localStream,
         remoteStream: peer.remoteStream,
         micError: peer.micError,
+        blocked: peer.voiceBlocked,
         muted: peer.muted,
         onToggleMute: () => peer.setMuted((value) => !value),
         onEnable: () =>
@@ -506,6 +511,9 @@ function SeatGate({
 }) {
   return (
     <main className="shell gate">
+      <Link href="/" className="brand">
+        Enroque
+      </Link>
       <p className="kicker">Sala {formatCode(code)}</p>
       <h1>Siéntate a la mesa.</h1>
       <p className="lede">Tu rival ya abrió la sala. Dile cómo te llamas y entras a la partida con ese nombre.</p>

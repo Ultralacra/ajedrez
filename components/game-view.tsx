@@ -397,7 +397,9 @@ function PlayerBar({
   const critical = low && clock != null && clock <= 10_000;
   return (
     <div className={active ? "player active" : "player"}>
-      <span className={`stone ${color}`} />
+      <span className={`avatar ${color}`} aria-hidden="true">
+        {name.trim().charAt(0).toUpperCase() || (color === "w" ? "B" : "N")}
+      </span>
       <div className="player-copy">
         <strong>
           {name} {mine && <em>Tú</em>}

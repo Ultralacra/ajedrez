@@ -46,91 +46,108 @@ export function Lobby() {
   }
 
   return (
-    <main className="shell lobby">
-      <div className="lobby-copy">
-        <p className="kicker">Ajedrez en vivo</p>
-        <h1>Dos personas. Un tablero. La voz abierta.</h1>
-        <p className="lede">
-          Crea una sala, comparte el enlace y juega al momento. Las jugadas viajan al instante y pueden hablarse por el micrófono.
-        </p>
-        <form className="form-card" onSubmit={create}>
-          <label>
-            Tu nombre
-            <input
-              value={name}
-              maxLength={18}
-              placeholder="Cómo te verá tu rival"
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
-          <fieldset>
-            <legend>Reloj</legend>
-            <div className="seg">
-              {[
-                [5, "5 min"],
-                [10, "10 min"],
-                [15, "15 min"],
-                [null, "Sin reloj"],
-              ].map(([value, label]) => (
-                <button
-                  key={String(value)}
-                  type="button"
-                  aria-pressed={minutes === value}
-                  onClick={() => setMinutes(value as number | null)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <fieldset>
-            <legend>Tu color</legend>
-            <div className="seg">
-              {(
-                [
-                  ["w", "Blancas"],
-                  ["b", "Negras"],
-                  ["random", "Al azar"],
-                ] as const
-              ).map(([value, label]) => (
-                <button key={value} type="button" aria-pressed={color === value} onClick={() => setColor(value)}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <button type="submit" className="btn primary">
-            Crear sala
-          </button>
-          <p className="quiet">El reloj empieza en la primera jugada. Quien crea la sala tiene que dejar esta pestaña abierta.</p>
-        </form>
+    <main className="shell">
+      <header className="site-head">
+        <Link href="/" className="brand">
+          Enroque
+        </Link>
+        <nav>
+          <Link href="/practicar" className="btn ghost">
+            Practicar
+          </Link>
+        </nav>
+      </header>
+      <div className="lobby">
+        <div className="lobby-copy">
+          <p className="kicker">Ajedrez en vivo</p>
+          <h1>Juega con un amigo y háblense mientras mueven.</h1>
+          <p className="lede">
+            Crea una sala, comparte el enlace y la partida empieza en cuanto entre tu rival. Sin cuentas ni descargas.
+          </p>
+          <ul className="perks">
+            <li>Jugadas al instante</li>
+            <li>Voz y chat</li>
+            <li>Reloj opcional</li>
+          </ul>
+          <form className="form-card" onSubmit={create}>
+            <h2>Nueva partida</h2>
+            <label>
+              Tu nombre
+              <input
+                value={name}
+                maxLength={18}
+                placeholder="Cómo te verá tu rival"
+                onChange={(event) => setName(event.target.value)}
+              />
+            </label>
+            <fieldset>
+              <legend>Reloj</legend>
+              <div className="seg">
+                {[
+                  [5, "5 min"],
+                  [10, "10 min"],
+                  [15, "15 min"],
+                  [null, "Sin reloj"],
+                ].map(([value, label]) => (
+                  <button
+                    key={String(value)}
+                    type="button"
+                    aria-pressed={minutes === value}
+                    onClick={() => setMinutes(value as number | null)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Tu color</legend>
+              <div className="seg">
+                {(
+                  [
+                    ["w", "Blancas"],
+                    ["b", "Negras"],
+                    ["random", "Al azar"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button key={value} type="button" aria-pressed={color === value} onClick={() => setColor(value)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <button type="submit" className="btn primary">
+              Crear sala
+            </button>
+            <p className="quiet">El reloj empieza en la primera jugada. Quien crea la sala tiene que dejar esta pestaña abierta.</p>
+          </form>
 
-        <form className="form-card join" onSubmit={join}>
-          <label>
-            ¿Te pasaron un código?
-            <input
-              value={formatCode(code)}
-              placeholder="AB3-K9Q"
-              onChange={(event) => {
-                setCode(normalizeCode(event.target.value));
-                setError("");
-              }}
-              aria-label="Código de la sala"
-              autoCapitalize="characters"
-            />
-          </label>
-          {error && <p className="warn">{error}</p>}
-          <button type="submit" className="btn ghost">
-            Entrar a la sala
-          </button>
-        </form>
-        <p className="quiet">
-          <Link href="/practicar">Practicar en este tablero</Link>, sin rival y sin micrófono.
-        </p>
-      </div>
-      <div className="hero">
-        <ChessBoard fen={HERO_FEN} orientation="w" canMove={false} lastMove={{ from: "f1", to: "c4" }} onMove={() => {}} />
-        <p className="quiet">Partida italiana. El tablero de verdad se mueve en cuanto entra la otra persona.</p>
+          <form className="form-card join" onSubmit={join}>
+            <h2>¿Te pasaron un código?</h2>
+            <div className="join-row">
+              <input
+                value={formatCode(code)}
+                placeholder="AB3-K9Q"
+                onChange={(event) => {
+                  setCode(normalizeCode(event.target.value));
+                  setError("");
+                }}
+                aria-label="Código de la sala"
+                autoCapitalize="characters"
+              />
+              <button type="submit" className="btn ghost">
+                Entrar a la sala
+              </button>
+            </div>
+            {error && <p className="warn">{error}</p>}
+          </form>
+        </div>
+        <div className="hero">
+          <ChessBoard fen={HERO_FEN} orientation="w" canMove={false} lastMove={{ from: "f1", to: "c4" }} onMove={() => {}} />
+          <p className="quiet">
+            Partida italiana. <Link href="/practicar">Practica en este tablero</Link> sin rival.
+          </p>
+        </div>
       </div>
     </main>
   );

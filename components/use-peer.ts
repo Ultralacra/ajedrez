@@ -5,13 +5,32 @@ import type { DataConnection, MediaConnection, Peer } from "peerjs";
 
 export type LinkStatus = "connecting" | "waiting" | "live" | "error";
 
-const ICE: RTCConfiguration = {
+const STUN: RTCConfiguration = {
   iceServers: [
     { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
     { urls: "stun:stun.cloudflare.com:3478" },
     { urls: "stun:global.stun.twilio.com:3478" },
   ],
 };
+
+let iceCache: { at: number; config: Promise<RTCConfiguration> } | null = null;
+
+function loadIce(): Promise<RTCConfiguration> {
+  if (iceCache && Date.now() - iceCache.at < 4 * 60 * 60 * 1000) return iceCache.config;
+  const config = fetch("/api/voz", { cache: "no-store", signal: AbortSignal.timeout(3500) })
+    .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+    .then((data: { iceServers?: unknown }) =>
+      Array.isArray(data.iceServers) && data.iceServers.length > 0
+        ? { iceServers: data.iceServers as RTCIceServer[] }
+        : STUN,
+    )
+    .catch(() => {
+      iceCache = null;
+      return STUN;
+    });
+  iceCache = { at: Date.now(), config };
+  return config;
+}
 
 export function peerIdFor(code: string) {
   return `enroque-${code.toLowerCase()}`;
@@ -38,6 +57,7 @@ export function usePeerRoom({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
+  const [voiceBlocked, setVoiceBlocked] = useState(false);
   const onDataRef = useRef(onData);
   const onLinkRef = useRef(onLink);
   const isHostRef = useRef(isHost);
@@ -62,9 +82,15 @@ export function usePeerRoom({
     const hear = (stream: MediaStream) => {
       if (callRef.current !== call || stream.getAudioTracks().length === 0) return;
       heardRef.current = true;
+      setVoiceBlocked(false);
       setRemoteStream(stream);
     };
     call.on("stream", hear);
+    call.on("iceStateChanged", (state) => {
+      if (callRef.current !== call) return;
+      if (state === "failed") setVoiceBlocked(true);
+      if (state === "connected" || state === "completed") setVoiceBlocked(false);
+    });
     const pc = call.peerConnection;
     pc?.addEventListener("track", (event) => {
       const stream = event.streams[0] ?? new MediaStream([event.track]);
@@ -194,7 +220,7 @@ export function usePeerRoom({
       const gen = ++generation;
       setError(null);
       setStatus("connecting");
-      const { Peer } = await import("peerjs");
+      const [{ Peer }, config] = await Promise.all([import("peerjs"), loadIce()]);
       if (cancelled || gen !== generation) return;
       destroyPeer();
       connRef.current = null;
@@ -250,10 +276,12 @@ export function usePeerRoom({
         return true;
       };
 
-      if (isHost) {
-        peer = new Peer(peerIdFor(code), { config: ICE, debug: 0 });
-      } else {
-        peer = new Peer({ config: ICE, debug: 0 });
+      try {
+        peer = isHost ? new Peer(peerIdFor(code), { config, debug: 0 }) : new Peer({ config, debug: 0 });
+      } catch {
+        if (retry(900)) return;
+        fail("No se pudo usar el servidor de señal. Revisa tu red y reintenta.");
+        return;
       }
       peerRef.current = peer;
 
@@ -329,6 +357,7 @@ export function usePeerRoom({
     remoteStream,
     localStream,
     micError,
+    voiceBlocked,
     muted,
     setMuted,
     send,
